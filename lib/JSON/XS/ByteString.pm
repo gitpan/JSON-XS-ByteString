@@ -10,7 +10,7 @@ require JSON::XS;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(encode_json encode_json_unsafe decode_json decode_json_safe encode_utf8 decode_utf8);
 use version;
-our $VERSION = qv '0.9.0';
+our $VERSION = qv '0.10.0';
 
 require XSLoader;
 XSLoader::load('JSON::XS::ByteString', $VERSION);
@@ -47,7 +47,7 @@ The module try to achieve that by 3 approaches below:
 =over 4
 
 =item *
-Transfer all the numeric values into strings before building the JSON string from Perl data
+Transfer all the non-ref, non-undef values into strings before building the JSON string from Perl data
 
 Because by the Perl nature, it's hard to determine if the outputted one is a string or numeric one.
 The nondeterministic will make the life harder if the acceptor is writing in other languages

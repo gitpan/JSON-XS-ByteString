@@ -118,7 +118,7 @@ decode_utf8(SV *data)
             }
             if( SvPOK(data) )
                 SvUTF8_on(data);
-            else
+            else if( SvANY(data) )
                 SvPVutf8_nolen(data);
         }
         while( tail!=&head ){
