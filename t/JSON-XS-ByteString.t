@@ -8,7 +8,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 6;
+use Test::More tests => 7;
 BEGIN { use_ok('JSON::XS::ByteString') };
 
 #########################
@@ -26,3 +26,9 @@ is_deeply($data3, $data, 'decode_json');
 my $json2 = JSON::XS::ByteString::encode_json_unsafe($data);
 is($json2, '["Cindy 好漂亮",{"Cindy":"最漂亮了"}]', 'encode_json');
 is_deeply([undef], JSON::XS::ByteString::decode_json(JSON::XS::ByteString::encode_json([undef])), 'encode/decode undef');
+
+{
+    my $o = [1];
+    $o->[0] = undef;
+    is_deeply([undef], JSON::XS::ByteString::decode_json(JSON::XS::ByteString::encode_json($o)), 'encode/decode dirty undef');
+}
