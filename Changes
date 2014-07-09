@@ -1,5 +1,8 @@
 Revision history for Perl extension gutil::JSON2::XS.
 
+0.12.0 2014.7.9
+    Deal with UTF8/wide char hash key
+
 0.11.0 2014.7.9
     Detect Perl undef more correctly
 

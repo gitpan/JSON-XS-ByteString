@@ -61,6 +61,11 @@ encode_utf8(SV *data)
                             while( entry = hv_iternext((HV*)deref) ){
                                 *p++ = HeVAL(entry);
                                 SHIFT_AND_EXTEND_JSON2_STACK;
+
+                                if( HeKLEN(entry)==HEf_SVKEY )
+                                    SvUTF8_off(HeKEY_sv(entry));
+                                else
+                                    HEK_UTF8_off(HeKEY_hek(entry));
                             }
                             continue;
                         }
@@ -111,6 +116,11 @@ decode_utf8(SV *data)
                             while( entry = hv_iternext((HV*)deref) ){
                                 *p++ = HeVAL(entry);
                                 SHIFT_AND_EXTEND_JSON2_STACK;
+
+                                if( HeKLEN(entry)==HEf_SVKEY )
+                                    SvUTF8_on(HeKEY_sv(entry));
+                                else
+                                    HEK_UTF8_on(HeKEY_hek(entry));
                             }
                             continue;
                         }

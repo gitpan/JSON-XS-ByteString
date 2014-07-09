@@ -10,7 +10,7 @@ require JSON::XS;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(encode_json encode_json_unsafe decode_json decode_json_safe encode_utf8 decode_utf8);
 use version;
-our $VERSION = qv '0.11.0';
+our $VERSION = qv '0.12.0';
 
 require XSLoader;
 XSLoader::load('JSON::XS::ByteString', $VERSION);
@@ -77,14 +77,6 @@ after C<JSON::XS::decode_json>.
 Because in the pure Perl world, there's insignificant difference between numeric or string.
 So I think we don't need to do it since the result will be used in Perl.
 
-=head2 The hash key is not transferred
-
-It's an implementation consideration. There's no way to transfer the hash key inplace.
-Forcing to do it is to delete the hash entry and then re-insert it into the hash with the transferred key,
-which is much more expensive.
-
-If you really need it, please let me know. I might create another independent function to do it.
-
 =head1 FUNCTIONS
 
 =head2 $json_string = encode_json($perl_data)
@@ -108,9 +100,6 @@ After that, the function will then transfer
 =item * each multibyte-char string back to bytes (utf8-octet)
 
 =back
-
-Note that the hash key will be left unchanged before or after,
-because there's no way to transfer hash key inplace.
 
 =cut
 sub encode_json {
@@ -141,10 +130,7 @@ Get the perl data structure back from a JSON string.
 After the call to JSON::XS::decode_json, the function
 will transfer each multibyte-char string field into bytes (utf8-octet)
 
-Note that the hash key will be left unchanged,
-because there's no way to transfer hash key inplace.
-
-And only the string values are converted, the numeric ones are not.
+Note that only the string values are converted, the numeric ones are not.
 
 =cut
 sub decode_json {
@@ -182,10 +168,6 @@ and never back.
 Though the C<encode_json> will try to convert it back to utf8 encoded octets.
 It didn't remember if any of them is originally numeric or multibyte chars already.
 They'll all transfer back to utf8 encoded octets.
-
-=head2 The hash key is not touched
-
-To do it will hurt the performance. If you really need it, let me know.
 
 =head1 SEE ALSO
 
