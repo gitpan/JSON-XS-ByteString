@@ -1,5 +1,5 @@
 ---
-abstract: 'Thin wrapper around fast JSON::XS that makes each JSON fields as string, and Perl fields as bytes (utf8 octet)'
+abstract: 'Thin wrapper around fast L<JSON::XS> that makes each JSON fields as string, and Perl fields as bytes (utf8 octet)'
 author:
   - 'cindy <cindy@cpan.org>'
 build_requires:
@@ -19,4 +19,4 @@ no_index:
     - inc
 requires:
   JSON::XS: '0'
-version: v0.12.0
+version: v0.13.0

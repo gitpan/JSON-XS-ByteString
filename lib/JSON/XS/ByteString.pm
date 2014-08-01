@@ -10,14 +10,14 @@ require JSON::XS;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(encode_json encode_json_unsafe decode_json decode_json_safe encode_utf8 decode_utf8);
 use version;
-our $VERSION = qv '0.12.0';
+our $VERSION = qv '0.13.0';
 
 require XSLoader;
 XSLoader::load('JSON::XS::ByteString', $VERSION);
 
 =head1 NAME
 
-JSON::XS::ByteString - Thin wrapper around fast JSON::XS that makes each JSON fields as string, and Perl fields as bytes (utf8 octet)
+JSON::XS::ByteString - Thin wrapper around fast L<JSON::XS> that makes each JSON fields as string, and Perl fields as bytes (utf8 octet)
 
 =head1 SYNOPSIS
 
@@ -38,7 +38,7 @@ JSON::XS::ByteString - Thin wrapper around fast JSON::XS that makes each JSON fi
 
 =head1 DESCRIPTION
 
-This module is a wrapper around JSON::XS for making the life easier dealing with UTF-8 byte strings.
+This module is a wrapper around L<JSON::XS> for making the life easier dealing with UTF-8 byte strings.
 
 The added overhead is very low, you can try that your self ^^
 
@@ -55,6 +55,9 @@ that strictly care about if it's string or number.
 
 =item *
 Transfer all the utf8 encoded octet into multibyte-char strings before encoding to JSON string.
+If there're any malform octets, we'll transfer those bytes into questionmarks(?).
+If you use the _unsafe version, we'll just leave them there, otherwise we'll recover the questionmarks back
+to the original malform octets.
 
 If your situation is just like me that we all use utf8 encoded octet all around,
 it's cumbersome and slow that we need to recursively upgrade all the string value into multibyte chars
@@ -89,7 +92,7 @@ Before calling to JSON::XS::encode_json. This function will transfer (modify the
 
 =item * each non-string, non-arrayref, non-hashref scalar into multibyte-char string value
 
-=item * each bytes (utf8-octet) into multibyte-char string value
+=item * each whole bytes (utf8-octet) into multibyte-char string value. when there're any malform octets, transfer them to questionmarks(?).
 
 =back
 
@@ -99,14 +102,14 @@ After that, the function will then transfer
 
 =item * each multibyte-char string back to bytes (utf8-octet)
 
+=item * each questionmark back to original malform octets
+
 =back
 
 =cut
 sub encode_json {
-    decode_utf8($_[0]);
-    my $res = JSON::XS::encode_json($_[0]);
-    encode_utf8($_[0]);
-    return $res;
+    decode_utf8_with_orig($_[0]);
+    JSON::XS::encode_json($_[0]);
 }
 
 =head2 $json_string = encode_json_unsafe($perl_value)
@@ -136,7 +139,7 @@ Note that only the string values are converted, the numeric ones are not.
 sub decode_json {
     my $res = JSON::XS::decode_json($_[0]);
     encode_utf8($res);
-    return $res;
+    $res;
 }
 
 =head2 $perl_data = decode_json_safe($json_string)
@@ -158,6 +161,8 @@ Downgrade each string fields of the C<$perl_data> to utf8 encoded octets.
 
 Upgrade each string or numeric fields of the C<$perl_data> to multibyte chars.
 
+If there're any malform utf8 octets, transfer them to questionmarks(?).
+
 =head1 CAVEATS
 
 =head2 The input argument of C<encode_json> / C<encnode_json_unsafe> will be changed
@@ -168,6 +173,11 @@ and never back.
 Though the C<encode_json> will try to convert it back to utf8 encoded octets.
 It didn't remember if any of them is originally numeric or multibyte chars already.
 They'll all transfer back to utf8 encoded octets.
+
+=head2 The malform octets in the hash key is not handled
+
+The malform octets in the hash key is left as is.
+Then the C<JSON::XS::encode_json> will complain about that.
 
 =head1 SEE ALSO
 

@@ -1,5 +1,8 @@
 Revision history for Perl extension gutil::JSON2::XS.
 
+0.13.0 2014.8.1
+    Deal with malform UTF8 octet (except in hash key)
+
 0.12.0 2014.7.9
     Deal with UTF8/wide char hash key
 
