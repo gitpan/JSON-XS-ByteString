@@ -1,5 +1,8 @@
 Revision history for Perl extension gutil::JSON2::XS.
 
+0.13.1 2014.8.1
+    Add some syntax additions that makes clang happier...
+
 0.13.0 2014.8.1
     Deal with malform UTF8 octet (except in hash key)
 

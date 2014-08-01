@@ -65,7 +65,7 @@ struct Hook_t {
                     { \
                         HE *entry; \
                         hv_iterinit((HV*)deref); \
-                        while( entry = hv_iternext((HV*)deref) ){ \
+                        while( (entry = hv_iternext((HV*)deref)) ){ \
                             *p++ = HeVAL(entry); \
                             SHIFT_AND_EXTEND_JSON2_STACK; \
 \
@@ -79,6 +79,7 @@ struct Hook_t {
                         } \
                         continue; \
                     } \
+                default: ; \
             } \
         } \
         if( SvPOK(data) ){ \
@@ -252,7 +253,7 @@ encode_utf8(SV *data)
                     { \
                         HE *entry; \
                         hv_iterinit((HV*)deref); \
-                        while( entry = hv_iternext((HV*)deref) ){ \
+                        while( (entry = hv_iternext((HV*)deref)) ){ \
                             *p++ = HeVAL(entry); \
                             SHIFT_AND_EXTEND_JSON2_STACK; \
 \
@@ -263,6 +264,7 @@ encode_utf8(SV *data)
                         } \
                         continue; \
                     } \
+                default: ; \
             } \
         } \
         if( SvPOK(data) ){ \
