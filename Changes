@@ -1,5 +1,8 @@
 Revision history for Perl extension gutil::JSON2::XS.
 
+0.13.3 2014.8.13
+    To compatible with Perl 5.8.5
+
 0.13.2 2014.8.12
     Use older form of version string, to compatible with Perl 5.8
 

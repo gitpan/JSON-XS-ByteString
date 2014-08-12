@@ -4,6 +4,13 @@
 
 #include "ppport.h"
 
+#ifndef UNLIKELY
+#  define UNLIKELY(x) (x)
+#endif
+#ifndef LIKELY
+#  define LIKELY(x) (x)
+#endif
+
 #define JSON2_STACK_CELL_SIZE 1022
 struct StackCell_t {
     struct StackCell_t *prev, *next;

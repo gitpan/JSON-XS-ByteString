@@ -1,20 +1,11 @@
---- #YAML:1.0
-name:               JSON-XS-ByteString
-version:            0.013002
-abstract:           Thin wrapper around fast L<JSON::XS> that makes each JSON fields as string, and Perl fields as bytes (utf8 octet)
-author:
-    - cindy <cindy@cpan.org>
-license:            unknown
-distribution_type:  module
-configure_requires:
-    ExtUtils::MakeMaker:  0
+# http://module-build.sourceforge.net/META-spec.html
+#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
+name:         JSON-XS-ByteString
+version:      0.013003
+version_from: lib/JSON/XS/ByteString.pm
+installdirs:  site
 requires:
-    JSON::XS:  0
-no_index:
-    directory:
-        - t
-        - inc
-generated_by:       ExtUtils::MakeMaker version 6.48
-meta-spec:
-    url:      http://module-build.sourceforge.net/META-spec-v1.4.html
-    version:  1.4
+    JSON::XS:                      0
+
+distribution_type: module
+generated_by: ExtUtils::MakeMaker version 6.17
