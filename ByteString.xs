@@ -308,7 +308,6 @@ decode_utf8_with_orig(SV *data)
         DECODE_UTF8(data, \
             { \
                 STRLEN total_len = SvCUR(sv); \
-                STRLEN i = total_len - len; \
                 struct Shadow_t *new_shadow = (struct Shadow_t*) safemalloc(sizeof(struct Shadow_t) + total_len + 1); \
                 char *new_str = new_shadow->new_str; \
                 char *ori_str; \
@@ -319,8 +318,8 @@ decode_utf8_with_orig(SV *data)
                 shadow_tail->next = new_shadow; \
                 shadow_tail = new_shadow; \
                 Copy(ori_str, new_str, total_len-len, char); \
+                new_str[total_len] = 0; \
                 q = (unsigned char*)new_str + (p - (unsigned char*)ori_str); \
-                q[total_len] = 0; \
             } \
         );
         shadow_tail->next = NULL;
