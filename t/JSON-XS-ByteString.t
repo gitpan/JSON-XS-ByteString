@@ -8,7 +8,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 13;
+use Test::More tests => 15;
 BEGIN { use_ok('JSON::XS::ByteString') };
 
 #########################
@@ -51,3 +51,5 @@ is_deeply(JSON::XS::ByteString::decode_json('{"Cindy 好漂亮":1}'), {"Cindy �
     is_deeply($data, ["\x43\x69\x6E\x64\x79\x20\x{597D}\x{6F02}\x{4EAE}"], 'encode_utf8');
 }
 
+is(JSON::XS::ByteString::encode_json([join '', map { chr hex $_ } qw(C0 A2)]), '["??"]', "codepoint shoud be shorter");
+is(JSON::XS::ByteString::encode_json([join '', map { chr hex $_ } qw(F5 84 81 B9)]), '["????"]', "codepoint after U+10FFFF");

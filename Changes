@@ -1,5 +1,8 @@
 Revision history for Perl extension gutil::JSON2::XS.
 
+0.13.5 2014.8.27
+    To fit JSON::XS' stricter acceptable codepoint
+
 0.13.4 2014.8.27
     Fix malform UTF8 octet shadow buffer's wrong end position.
 

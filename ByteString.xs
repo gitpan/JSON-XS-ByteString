@@ -122,9 +122,9 @@ static void shadow_free(pTHX_ void *hook)
 
 MODULE = JSON::XS::ByteString		PACKAGE = JSON::XS::ByteString		
 
-#define MOVING_CHECK_UTF8_TAIL(head_bound, need_len) \
+#define MOVING_CHECK_UTF8_TAIL(head_bound, need_len, head_mask, body_mask) \
     if( *p < head_bound ){ \
-        if( len < need_len ) \
+        if( len < need_len || ((*p & head_mask) == 0 && (*(p+1) & body_mask) == 0) || (need_len==4 && (*p>0xF4 || (*p==0xF4 && *(p+1)>=0x90))) ) \
             break; \
         { \
             unsigned char *q = p+1; \
@@ -137,18 +137,16 @@ MODULE = JSON::XS::ByteString		PACKAGE = JSON::XS::ByteString
             } \
             if( checked_len < need_len ) \
                 break; \
-            else \
-                p += need_len; \
+            p += need_len; \
             len -= need_len; \
         } \
     }
 
-#define MOVING_CHECK_WRITE_UTF8_TAIL(head_bound, need_len) \
+#define MOVING_CHECK_WRITE_UTF8_TAIL(head_bound, need_len, head_mask, body_mask) \
     if( *p < head_bound ){ \
-        if( len < need_len ){ \
-            *q = '?'; \
-            while( --len ) \
-                *++q = '?'; \
+        if( len < need_len || ((*p & head_mask) == 0 && (*(p+1) & body_mask) == 0) || (need_len==4 && (*p>0xF4 || (*p==0xF4 && *(p+1)>=0x90))) ){ \
+            *q++ = '?'; \
+            --len; \
         } \
         else{ \
             unsigned char *qq = p+1; \
@@ -178,6 +176,15 @@ MODULE = JSON::XS::ByteString		PACKAGE = JSON::XS::ByteString
         STRLEN len = SvCUR(sv); \
         unsigned char *p = (unsigned char*)SvPVX(sv); \
         STRLEN i; \
+        if(0){ \
+            STRLEN i; \
+            STRLEN len; \
+            unsigned char * p = (unsigned char*)SvPV(sv, len); \
+            printf("before utf8 on\n"); \
+            for(i=0; i<len; ++i) \
+                printf("%02X ", (unsigned int)p[i]); \
+            puts(""); \
+        } \
         while( len ){ \
             if( *p < 0x80 ){ /* 0xxxxxxx (len=1) */ \
                 ++p; \
@@ -186,11 +193,11 @@ MODULE = JSON::XS::ByteString		PACKAGE = JSON::XS::ByteString
             else if( *p < 0xC0 ){ /* 10xxxxxx (illegal head) */ \
                 break; \
             } \
-            else MOVING_CHECK_UTF8_TAIL(0xE0, 2) /* 110xxxxx (len=2) */ \
-            else MOVING_CHECK_UTF8_TAIL(0xF0, 3) /* 1110xxxx (len=3) */ \
-            else MOVING_CHECK_UTF8_TAIL(0xF8, 4) /* 11110xxx (len=4) */ \
-            else MOVING_CHECK_UTF8_TAIL(0xFC, 5) /* 111110xx (len=5) */ \
-            else MOVING_CHECK_UTF8_TAIL(0xFE, 6) /* 1111110x (len=6) */ \
+            else MOVING_CHECK_UTF8_TAIL(0xE0, 2, 0x1E, 0x00) /* 110xxxxx (len=2) */ \
+            else MOVING_CHECK_UTF8_TAIL(0xF0, 3, 0x0F, 0x20) /* 1110xxxx (len=3) */ \
+            else MOVING_CHECK_UTF8_TAIL(0xF8, 4, 0x07, 0x30) /* 11110xxx (len=4) */ \
+            /* else MOVING_CHECK_UTF8_TAIL(0xFC, 5, 0x03, 0x38) */ /* no 111110xx (len=5) */ \
+            /* else MOVING_CHECK_UTF8_TAIL(0xFE, 6, 0x01, 0x3C) */ /* no 1111110x (len=6) */ \
             else { /* 1111111x (illegal head) */ \
                 break; \
             } \
@@ -208,17 +215,26 @@ MODULE = JSON::XS::ByteString		PACKAGE = JSON::XS::ByteString
                     *q++ = '?'; \
                     --len; \
                 } \
-                else MOVING_CHECK_WRITE_UTF8_TAIL(0xE0, 2) /* 110xxxxx (len=2) */ \
-                else MOVING_CHECK_WRITE_UTF8_TAIL(0xF0, 3) /* 1110xxxx (len=3) */ \
-                else MOVING_CHECK_WRITE_UTF8_TAIL(0xF8, 4) /* 11110xxx (len=4) */ \
-                else MOVING_CHECK_WRITE_UTF8_TAIL(0xFC, 5) /* 111110xx (len=5) */ \
-                else MOVING_CHECK_WRITE_UTF8_TAIL(0xFE, 6) /* 1111110x (len=6) */ \
+                else MOVING_CHECK_WRITE_UTF8_TAIL(0xE0, 2, 0x1E, 0x00) /* 110xxxxx (len=2) */ \
+                else MOVING_CHECK_WRITE_UTF8_TAIL(0xF0, 3, 0x0F, 0x20) /* 1110xxxx (len=3) */ \
+                else MOVING_CHECK_WRITE_UTF8_TAIL(0xF8, 4, 0x07, 0x30) /* 11110xxx (len=4) */ \
+                /* else MOVING_CHECK_WRITE_UTF8_TAIL(0xFC, 5, 0x03, 0x38) */ /* no 111110xx (len=5) */ \
+                /* else MOVING_CHECK_WRITE_UTF8_TAIL(0xFE, 6, 0x01, 0x3C) */ /* no 1111110x (len=6) */ \
                 else { /* 1111111x (illegal head) */ \
                     ++p; \
                     *q++ = '?'; \
                     --len; \
                 } \
             } \
+        } \
+        if(0){ \
+            STRLEN i; \
+            STRLEN len; \
+            unsigned char * p = (unsigned char*)SvPV(sv, len); \
+            printf("after utf8 on\n"); \
+            for(i=0; i<len; ++i) \
+                printf("%02X ", (unsigned int)p[i]); \
+            puts(""); \
         } \
         SvUTF8_on(sv); \
     }
@@ -318,8 +334,8 @@ decode_utf8_with_orig(SV *data)
                 shadow_tail->next = new_shadow; \
                 shadow_tail = new_shadow; \
                 Copy(ori_str, new_str, total_len-len, char); \
-                new_str[total_len] = 0; \
                 q = (unsigned char*)new_str + (p - (unsigned char*)ori_str); \
+                new_str[total_len] = 0; \
             } \
         );
         shadow_tail->next = NULL;
