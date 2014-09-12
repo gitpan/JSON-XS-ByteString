@@ -8,7 +8,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 15;
+use Test::More tests => 19;
 BEGIN { use_ok('JSON::XS::ByteString') };
 
 #########################
@@ -53,3 +53,11 @@ is_deeply(JSON::XS::ByteString::decode_json('{"Cindy 好漂亮":1}'), {"Cindy �
 
 is(JSON::XS::ByteString::encode_json([join '', map { chr hex $_ } qw(C0 A2)]), '["??"]', "codepoint shoud be shorter");
 is(JSON::XS::ByteString::encode_json([join '', map { chr hex $_ } qw(F5 84 81 B9)]), '["????"]', "codepoint after U+10FFFF");
+
+{
+    my $data = ['a',\2,3,\'12a'];
+    is(JSON::XS::ByteString::encode_json($data), '["a",2,"3",12]', "scalar ref as number hint");
+    is(JSON::XS::ByteString::encode_json($data), '["a",2,"3",12]', "scalar ref as number hint twice");
+    is(JSON::XS::ByteString::encode_json_unsafe($data), '["a",2,"3",12]', "scalar ref as number hint unsafe");
+    isnt(JSON::XS::ByteString::encode_json_unsafe($data), '["a",2,"3",12]', "scalar ref as number hint unsafe twice");
+}

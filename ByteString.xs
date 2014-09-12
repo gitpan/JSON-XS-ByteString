@@ -18,7 +18,10 @@ struct StackCell_t {
 };
 
 struct Shadow_t {
-    char *ori_str;
+    union {
+        char *str;
+        SV *sv;
+    } ori;
     struct Shadow_t *next;
     char new_str[0]; // var length
 };
@@ -41,7 +44,7 @@ struct Hook_t {
         p = curr->slot; \
     }
 
-#define ENCODE_UTF8(data, USE_SHADOW) { \
+#define ENCODE_UTF8(data, USE_SHADOW, USE_SHADOW_NV) { \
     struct StackCell_t head, *tail, *curr; \
     SV ** p; \
 \
@@ -89,6 +92,9 @@ struct Hook_t {
                 default: ; \
             } \
         } \
+        if( SvNOK(data) ) { \
+            USE_SHADOW_NV; \
+        } \
         if( SvPOK(data) ){ \
             USE_SHADOW; \
             SvUTF8_off(data); \
@@ -107,7 +113,13 @@ static void shadow_free(pTHX_ void *hook)
     SV *data = ((struct Hook_t*)hook)->root;
     ENCODE_UTF8(data, \
         if( shadow && shadow->new_str==SvPVX(data) ){ \
-            SvPV_set(data, shadow->ori_str); \
+            SvPV_set(data, shadow->ori.str); \
+            shadow = shadow->next; \
+        }, \
+        { \
+            SvUPGRADE(data, SVt_RV); \
+            SvROK_on(data); \
+            SvRV_set(data, shadow->ori.sv); \
             shadow = shadow->next; \
         } \
     );
@@ -242,9 +254,9 @@ MODULE = JSON::XS::ByteString		PACKAGE = JSON::XS::ByteString
 void
 encode_utf8(SV *data)
     CODE:
-        ENCODE_UTF8(data, /* */);
+        ENCODE_UTF8(data, /* */, ;);
 
-#define DECODE_UTF8(data, FORK_TO_HINT_TABLE) { \
+#define DECODE_UTF8(data, FORK_TO_HINT_TABLE, SAVE_ORI_SV_TO_HINT_TABLE) { \
     struct StackCell_t head, *tail, *curr; \
     SV ** p; \
     SV *root = data; \
@@ -261,33 +273,35 @@ encode_utf8(SV *data)
         data = *--p; \
         if( SvROK(data) ){ \
             SV *deref = SvRV(data); \
-            switch( SvTYPE(deref) ){ \
-                case SVt_PVAV: \
-                    { \
-                        SV **arr = AvARRAY((AV*)deref); \
-                        I32 i; \
-                        for(i=av_len((AV*)deref); i>=0; --i){ \
-                            *p++ = arr[i]; \
-                            SHIFT_AND_EXTEND_JSON2_STACK; \
-                        } \
-                        continue; \
-                    } \
-                case SVt_PVHV: \
-                    { \
-                        HE *entry; \
-                        hv_iterinit((HV*)deref); \
-                        while( (entry = hv_iternext((HV*)deref)) ){ \
-                            *p++ = HeVAL(entry); \
-                            SHIFT_AND_EXTEND_JSON2_STACK; \
+            U32 ref_type = SvTYPE(deref); \
+            if( ref_type==SVt_PVAV ){ \
+                SV **arr = AvARRAY((AV*)deref); \
+                I32 i; \
+                for(i=av_len((AV*)deref); i>=0; --i){ \
+                    *p++ = arr[i]; \
+                    SHIFT_AND_EXTEND_JSON2_STACK; \
+                } \
+                continue; \
+            } \
+            if( ref_type==SVt_PVHV ){ \
+                HE *entry; \
+                hv_iterinit((HV*)deref); \
+                while( (entry = hv_iternext((HV*)deref)) ){ \
+                    *p++ = HeVAL(entry); \
+                    SHIFT_AND_EXTEND_JSON2_STACK; \
 \
-                            if( HeKLEN(entry)==HEf_SVKEY ) \
-                                SAFE_SvUTF8_on(HeKEY_sv(entry), FORK_TO_HINT_TABLE) \
-                            else \
-                                HEK_UTF8_on(HeKEY_hek(entry)); \
-                        } \
-                        continue; \
-                    } \
-                default: ; \
+                    if( HeKLEN(entry)==HEf_SVKEY ) \
+                        SAFE_SvUTF8_on(HeKEY_sv(entry), FORK_TO_HINT_TABLE) \
+                    else \
+                        HEK_UTF8_on(HeKEY_hek(entry)); \
+                } \
+                continue; \
+            } \
+            if( ref_type < SVt_PVAV ) { \
+                SAVE_ORI_SV_TO_HINT_TABLE; \
+                sv_force_normal_flags(data, SV_COW_DROP_PV); \
+                sv_setnv(data, SvNV(deref)); \
+                continue; \
             } \
         } \
         if( SvPOK(data) ){ \
@@ -308,7 +322,7 @@ encode_utf8(SV *data)
 void
 decode_utf8(SV *data)
     CODE:
-        DECODE_UTF8(data, q = p;);
+        DECODE_UTF8(data, q = p;, ;);
 
 void
 decode_utf8_with_orig(SV *data)
@@ -329,13 +343,20 @@ decode_utf8_with_orig(SV *data)
                 char *ori_str; \
                 SvOOK_off(sv); \
                 ori_str = SvPVX(sv); \
-                new_shadow->ori_str = ori_str; \
+                new_shadow->ori.str = ori_str; \
                 SvPV_set(sv, new_str); \
                 shadow_tail->next = new_shadow; \
                 shadow_tail = new_shadow; \
                 Copy(ori_str, new_str, total_len-len, char); \
                 q = (unsigned char*)new_str + (p - (unsigned char*)ori_str); \
                 new_str[total_len] = 0; \
+            }, \
+            { \
+                struct Shadow_t *new_shadow = (struct Shadow_t*) safemalloc(sizeof(struct Shadow_t)); \
+                new_shadow->ori.sv = deref; \
+                shadow_tail->next = new_shadow; \
+                shadow_tail = new_shadow; \
+                SvREFCNT_inc_void_NN(deref); \
             } \
         );
         shadow_tail->next = NULL;
